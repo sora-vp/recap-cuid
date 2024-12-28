@@ -1,98 +1,240 @@
 package cmd
 
 import (
-  "fmt"
+	"bufio"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
-  "strconv"
-  "time"
-  "bufio"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
-  "github.com/gofiber/fiber/v2/middleware/recover"
- 	"github.com/valyala/fasthttp"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/urfave/cli/v2"
+	"github.com/valyala/fasthttp"
 	"go.bug.st/serial"
 
 	"recap-cuid/web"
 )
 
+var isDebugMode = false
+var incomingMessage = ""
+var isProduction string
+
+// EventEmitter is a simple event emitter.
+type EventEmitter struct {
+	listeners map[string][]chan string
+	mu        sync.Mutex
+}
+
+// NewEventEmitter creates a new EventEmitter.
+func NewEventEmitter() *EventEmitter {
+	return &EventEmitter{
+		listeners: make(map[string][]chan string),
+	}
+}
+
+// On registers a listener for an event.
+func (e *EventEmitter) On(event string, ch chan string) {
+	e.mu.Lock()
+
+	defer e.mu.Unlock()
+
+	e.listeners[event] = append(e.listeners[event], ch)
+}
+
+// Off removes a listener for an event.
+func (e *EventEmitter) Off(event string, ch chan string) {
+	e.mu.Lock()
+
+	defer e.mu.Unlock()
+
+	listeners := e.listeners[event]
+
+	for i, listener := range listeners {
+		if listener == ch {
+			e.listeners[event] = append(listeners[:i], listeners[i+1:]...)
+			break
+		}
+	}
+}
+
+// Emit emits an event to all listeners.
+func (e *EventEmitter) Emit(event string, msg string) {
+	e.mu.Lock()
+
+	defer e.mu.Unlock()
+
+	for _, ch := range e.listeners[event] {
+		select {
+		case ch <- msg:
+		default:
+		}
+	}
+}
+
+var hasActiveConnection bool
+var activeConnectionMu sync.Mutex
+
+// Function to set the active connection status
+func setActiveConnection(status bool) bool {
+	activeConnectionMu.Lock()
+	defer activeConnectionMu.Unlock()
+
+	if hasActiveConnection && status {
+		// If there's already an active connection and we're trying to set a new one
+		return false
+	}
+
+	// Update the status
+	hasActiveConnection = status
+	return true
+}
+
 func StartWebServer(cCtx *cli.Context) error {
 	serverPort := cCtx.Int("port")
 	arduinoPort := cCtx.String("board-port")
 	arduinoBaudRate := cCtx.Int("baud-rate")
-	// isDebugMode = cCtx.Bool("debug")
+	isDebugMode = cCtx.Bool("debug")
 
 	arduinoMode := &serial.Mode{
 		BaudRate: arduinoBaudRate,
 	}
+
+	buff := make([]byte, 32)
 
 	if len(arduinoPort) == 0 {
 		fmt.Println("Mohon sebutkan pada port berapa pembaca kartu telah terhubung dengan perintah list.")
 		return nil
 	}
 
-	// port, arduErr := serial.Open(arduinoPort, arduinoMode)
-	_, arduErr := serial.Open(arduinoPort, arduinoMode)
+	port, arduErr := serial.Open(arduinoPort, arduinoMode)
 	if arduErr != nil {
 		fmt.Println("Gagal terhubung ke pembaca kartu:", arduErr)
 		return nil
 	}
 
-	app := fiber.New()
+	emitter := NewEventEmitter()
 
-	index, err := fs.Sub(ui.Index, "dist")
-	if err != nil {
-		panic(err)
-	}
+	go func() {
+		app := fiber.New()
+		dataChan := make(chan string)
 
-  app.Use(recover.New())
-	app.Use("/", filesystem.New(filesystem.Config{
-		Root:   http.FS(index),
-		Index:  "index.html",
-		Browse: false,
-	}))
+		index, err := fs.Sub(ui.Index, "dist")
+		if err != nil {
+			panic(err)
+		}
 
-	serveUI := func(ctx *fiber.Ctx) error {
-		return filesystem.SendFile(ctx, http.FS(index), "index.html")
-	}
+		fmt.Println(isProduction)
+		//   fmt.Println(isProduction != "yes")
+		//
+		// if isProduction != "yes" {
+		app.Use(cors.New())
+		//   }
 
-	uiPaths := []string{
-		"/",
-	}
+		app.Use(recover.New())
 
-	for _, path := range uiPaths {
-		app.Get(path, serveUI)
-	}
-
-  app.Get("/sse", func(c *fiber.Ctx) error {
-		c.Set("Content-Type", "text/event-stream")
-		c.Set("Cache-Control", "no-cache")
-		c.Set("Connection", "keep-alive")
-		c.Set("Transfer-Encoding", "chunked")
-
-		c.Status(fiber.StatusOK).Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
-			for {
-				msg := fmt.Sprintf("the time is %v",time.Now())
-				fmt.Fprintf(w, "data: Message: %s\n\n", msg)
-
-				err := w.Flush()
-				if err != nil {
-					fmt.Printf("Error while flushing: %v. Closing http connection.\n", err)
-
-					break
-				}
-				time.Sleep(5 * time.Millisecond)
-			}
-
+		app.Use("/", filesystem.New(filesystem.Config{
+			Root:   http.FS(index),
+			Index:  "index.html",
+			Browse: false,
 		}))
 
-		return nil
-	})
+		serveUI := func(ctx *fiber.Ctx) error {
+			return filesystem.SendFile(ctx, http.FS(index), "index.html")
+		}
 
-  log.Fatal(app.Listen("127.0.0.1:" + strconv.Itoa(serverPort)))
+		uiPaths := []string{
+			"/",
+		}
+
+		for _, path := range uiPaths {
+			app.Get(path, serveUI)
+		}
+
+		app.Get("/sse", func(c *fiber.Ctx) error {
+			c.Set("Content-Type", "text/event-stream")
+			c.Set("Cache-Control", "no-cache")
+			c.Set("Connection", "keep-alive")
+			c.Set("Transfer-Encoding", "chunked")
+
+			if !setActiveConnection(true) {
+				return c.Status(fiber.StatusTooManyRequests).SendString("Another connection is already active.")
+			}
+
+			c.Status(fiber.StatusOK).Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
+				defer setActiveConnection(false)
+
+				emitter.On("instruction", dataChan)
+
+				for dataFromMachine := range dataChan {
+					fmt.Fprintf(w, "data:{\"instruction\":\"%s\"}\n\n", dataFromMachine)
+
+					if err := w.Flush(); err != nil {
+						setActiveConnection(false)
+
+						break
+					}
+				}
+
+				emitter.Off("instruction", dataChan)
+			}))
+
+			return nil
+		})
+
+		log.Fatal(app.Listen("127.0.0.1:" + strconv.Itoa(serverPort)))
+	}()
+
+	for {
+		n, err := port.Read(buff)
+
+		if err != nil {
+			log.Fatal("Error reading data:", err)
+			break
+		}
+
+		incomingData := strings.TrimSpace(string(buff[:n]))
+
+		if strings.EqualFold(incomingData, "") {
+			continue
+		}
+
+		if isDebugMode {
+			dt := time.Now()
+			fmt.Println("[", dt.Format(time.StampMilli), "]", incomingData)
+		}
+
+		// Implement start bit with < and the > character as a stop bit.
+		// Ensuring stable and consistent data without normalizer.
+		for i := 0; i < len(incomingData); i++ {
+			char := string(incomingData[i])
+
+			if char == "<" {
+				incomingMessage = ""
+			} else if char == ">" {
+				if isDebugMode {
+					dt := time.Now()
+					fmt.Println("[", dt.Format(time.StampMilli), "]", incomingMessage)
+				}
+
+				// Emit the normalized keybind message to WebSocket clients
+				if strings.HasPrefix(incomingMessage, "SORA-") {
+					emitter.Emit("instruction", incomingMessage)
+				}
+
+				// Reset value
+				incomingMessage = ""
+			} else {
+				incomingMessage += char
+			}
+		}
+	}
 
 	return nil
 }
