@@ -24,7 +24,11 @@ import (
 
 var isDebugMode = false
 var incomingMessage = ""
-var isProduction string
+var isProduction bool
+
+func SetBuildFlag(status bool) {
+	isProduction = status
+}
 
 // EventEmitter is a simple event emitter.
 type EventEmitter struct {
@@ -130,12 +134,9 @@ func StartWebServer(cCtx *cli.Context) error {
 			panic(err)
 		}
 
-		fmt.Println(isProduction)
-		//   fmt.Println(isProduction != "yes")
-		//
-		// if isProduction != "yes" {
-		app.Use(cors.New())
-		//   }
+		if !isProduction {
+			app.Use(cors.New())
+		}
 
 		app.Use(recover.New())
 

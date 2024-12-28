@@ -8,7 +8,11 @@ import (
 	"recap-cuid/cmd"
 )
 
+var isProdBuild string
+
 func main() {
+	cmd.SetBuildFlag(isProdBuild == "y" || isProdBuild == "yes")
+
 	app := &cli.App{
 		Name:  "recap-cuid",
 		Usage: "sora recap cuid (card unique identifier) | Sebuah CLI app yang berfungsi untuk merekam dan merekap data kartu untuk menjadi pemilih tetap yang valid.",
