@@ -1,42 +1,62 @@
 package main
 
 import (
-	"io/fs"
 	"log"
-	"net/http"
+	"os"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/filesystem"
-  "github.com/gofiber/fiber/v2/middleware/recover"
-	"recap-cuid/web"
+	"github.com/urfave/cli/v2"
+	"recap-cuid/cmd"
 )
 
 func main() {
-	app := fiber.New()
-  app.Use(recover.New())
+	app := &cli.App{
+		Name:  "recap-cuid",
+		Usage: "sora recap cuid (card unique identifier) | Sebuah CLI app yang berfungsi untuk merekam dan merekap data kartu untuk menjadi pemilih tetap yang valid.",
+		Commands: []*cli.Command{
+			{
+				Name:    "list",
+				Aliases: []string{"l", "board", "b"},
+				Usage:   "List semua pembaca kartu yang terhubung dengan perangkat ini.",
+				Action:  cmd.ListAllBoard,
+			},
+			{
+				Flags: []cli.Flag{
+					&cli.IntFlag{
+						Name:    "port",
+						Aliases: []string{"p"},
+						Value:   8080,
+						Usage:   "Pada port berapa web berjalan",
+					},
 
-	index, err := fs.Sub(ui.Index, "dist")
-	if err != nil {
-		panic(err)
+					&cli.StringFlag{
+						Name:    "board-port",
+						Aliases: []string{"board", "b"},
+						Usage:   "Port pembaca kartu yang telah terdeteksi oleh perintah list",
+					},
+
+					&cli.IntFlag{
+						Name:    "baud-rate",
+						Aliases: []string{"rate", "r"},
+						Value:   115200,
+						Usage:   "Pada baud rate berapa pembaca kartu berjalan",
+					},
+
+					&cli.BoolFlag{
+						Name:    "debug",
+						Aliases: []string{"d"},
+						Value:   false,
+						Usage:   "Menjalankan program ini dalam mode debugging",
+					},
+				},
+				Name:    "start",
+				Aliases: []string{"s"},
+				Usage:   "Menjalankan server dengan UI berbasis web untuk merekam dan merekap data peserta pemilihan.",
+				Action:  cmd.StartWebServer,
+			},
+		},
 	}
 
-	app.Use("/", filesystem.New(filesystem.Config{
-		Root:   http.FS(index),
-		Index:  "index.html",
-		Browse: false,
-	}))
-
-	serveUI := func(ctx *fiber.Ctx) error {
-		return filesystem.SendFile(ctx, http.FS(index), "index.html")
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal(err)
 	}
-
-	uiPaths := []string{
-		"/",
-	}
-
-	for _, path := range uiPaths {
-		app.Get(path, serveUI)
-	}
-
-	log.Fatal(app.Listen(":8080"))
 }
