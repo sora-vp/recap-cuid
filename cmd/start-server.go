@@ -152,6 +152,8 @@ func StartWebServer(cCtx *cli.Context) error {
 
 		uiPaths := []string{
 			"/",
+			"/recap",
+			"/settings",
 		}
 
 		for _, path := range uiPaths {
