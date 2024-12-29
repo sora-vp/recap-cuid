@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { motion } from "motion/react";
 import { createBrowserRouter, RouterProvider } from "react-router";
+import useWebSocket from "react-use-websocket";
 
 const router = createBrowserRouter([
   {
@@ -22,6 +23,25 @@ const router = createBrowserRouter([
 ]);
 
 function App() {
+  const { readyState } = useWebSocket(
+    import.meta.env.PROD ? "/ws" : "http://localhost:8080/ws",
+    {
+      onMessage({ data }) {
+        console.log(data);
+      },
+      share: true,
+      shouldReconnect: () => true,
+      retryOnError: true,
+      reconnectInterval: 1000,
+      reconnectAttempts: 5,
+      onReconnectStop() {
+        location.reload();
+      },
+    },
+  );
+
+  console.log(readyState);
+
   useEffect(() => {
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === ",") {

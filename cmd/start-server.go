@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
 	"io/fs"
 	"log"
@@ -11,15 +10,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/urfave/cli/v2"
-	"github.com/valyala/fasthttp"
 	"go.bug.st/serial"
 
-	"recap-cuid/web"
+	ui "recap-cuid/web"
 )
 
 var isDebugMode = false
@@ -160,35 +159,38 @@ func StartWebServer(cCtx *cli.Context) error {
 			app.Get(path, serveUI)
 		}
 
-		app.Get("/sse", func(c *fiber.Ctx) error {
-			c.Set("Content-Type", "text/event-stream")
-			c.Set("Cache-Control", "no-cache")
-			c.Set("Connection", "keep-alive")
-			c.Set("Transfer-Encoding", "chunked")
-
+		app.Get("/ws", func(c *fiber.Ctx) error {
 			if !setActiveConnection(true) {
+				fmt.Println("Connection already active")
 				return c.Status(fiber.StatusTooManyRequests).SendString("Another connection is already active.")
 			}
 
-			c.Status(fiber.StatusOK).Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
-				defer setActiveConnection(false)
+			return websocket.New(func(conn *websocket.Conn) {
+				defer func() {
+					setActiveConnection(false)
+					conn.Close()
+
+					if isDebugMode {
+						fmt.Println("WebSocket client disconnected")
+					}
+				}()
 
 				emitter.On("instruction", dataChan)
 
-				for dataFromMachine := range dataChan {
-					fmt.Fprintf(w, "data:{\"instruction\":\"%s\"}\n\n", dataFromMachine)
+				for {
+					select {
+					case dataFromMachine := <-dataChan:
+						message := fmt.Sprint(dataFromMachine)
+						if err := conn.WriteMessage(websocket.TextMessage, []byte(message)); err != nil {
+							if isDebugMode {
+								fmt.Println("WebSocket write error:", err)
+							}
 
-					if err := w.Flush(); err != nil {
-						setActiveConnection(false)
-
-						break
+							return
+						}
 					}
 				}
-
-				emitter.Off("instruction", dataChan)
-			}))
-
-			return nil
+			})(c)
 		})
 
 		log.Fatal(app.Listen("127.0.0.1:" + strconv.Itoa(serverPort)))

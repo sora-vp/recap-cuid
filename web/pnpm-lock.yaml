@@ -28,6 +28,9 @@ importers:
       react-router:
         specifier: ^7.1.1
         version: 7.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-use-websocket:
+        specifier: ^4.11.1
+        version: 4.11.1
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -1914,6 +1917,12 @@ packages:
       react-dom:
         optional: true
 
+  react-use-websocket@4.11.1:
+    resolution:
+      {
+        integrity: sha512-39e8mK2a2A1h8uY3ePF45b2q0vwMOmaEy7J5qEhQg4n7vYa5oDLmqutG36kZQgAQ/3KCZS0brlGRbbZJ0+zfKQ==,
+      }
+
   react@18.3.1:
     resolution:
       {
@@ -3234,6 +3243,8 @@ snapshots:
       turbo-stream: 2.4.0
     optionalDependencies:
       react-dom: 18.3.1(react@18.3.1)
+
+  react-use-websocket@4.11.1: {}
 
   react@18.3.1:
     dependencies:
