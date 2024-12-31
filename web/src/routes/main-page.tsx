@@ -19,16 +19,28 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
+const baseNameSchema = z
+  .string()
+  .min(1, { message: "Diperlukan nama peserta!" })
+  .regex(/^[a-zA-Z0-9.,'\s`-]+$/, {
+    message:
+      "Hanya diperbolehkan menulis alfabet, angka, koma, petik satu, dan titik!",
+  });
+const baseSubpartSchema = z
+  .string()
+  .min(1, { message: "Diperlukan bagian darimana peserta ini!" })
+  .regex(/^[a-zA-Z0-9-_]+$/, {
+    message: "Hanya diperbolehkan menulis alfabet, angka, dan garis bawah!",
+  });
+
 const formSchema = z.object({
   cuid: z.string().min(4).max(28),
-  name: z.string(),
+  name: baseNameSchema,
+  subpart: baseSubpartSchema,
 });
 
 export function MainPage() {
-  const [cuid, setCUID] = useState<string | null>(
-    //null
-    "0X010X2F0X3A0X4B",
-  );
+  const [cuid, setCUID] = useState<string | null>(null);
 
   const setCardUID = useCallback((cuid: string) => setCUID(cuid), []);
 
@@ -45,62 +57,70 @@ function InsertNewParticipant(props: { cuid: string }) {
     },
   });
 
-  // 2. Define a submit handler.
   function onSubmit(values: z.infer<typeof formSchema>) {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
     console.log(values);
   }
 
   return (
-    <div className="flex flex-col justify-center items-center px-5 mt-2 space-y-2">
-      <div className="space-y-0.5">
-        <h3 className="scroll-m-20 text-2xl font-semibold tracking-tight">
-          Tambah Pemilih Tetap Baru
-        </h3>
-        <p>
-          Mohon tambahkan informasi pemilih dengan lengkap dan teliti. Pemilih
-          berhak untuk melihat datanya di tambahkan.
+    <div className="flex justify-center">
+      <div className="flex flex-col justify-center items-center md:px-5 mt-4 space-y-2 w-5/6 gap-0.5">
+        <div className="space-y-0.5 w-full">
+          <h3 className="scroll-m-20 text-2xl font-semibold tracking-tight">
+            Tambah Pemilih Tetap Baru
+          </h3>
+          <p>
+            Mohon tambahkan informasi pemilih dengan lengkap dan teliti. Pemilih
+            berhak untuk melihat datanya di tambahkan.
+          </p>
+        </div>
+        <p className="w-full select-none">
+          ID kartu:{" "}
+          <span className="font-mono font-semibold">
+            {props.cuid.replaceAll("0X", " 0x").trim()}
+          </span>
         </p>
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4 w-full"
+          >
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem className="w-full">
+                  <FormLabel>Nama Peserta</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="Masukan nama lengkap peserta"
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Nama peserta yang akan masuk menjadi daftar pemilih tetap.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="subpart"
+              render={({ field }) => (
+                <FormItem className="w-full">
+                  <FormLabel>Peserta Bagian Dari</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="mis. MHS" />
+                  </FormControl>
+                  <FormDescription>Pengelompokan peserta.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit">Submit</Button>
+          </form>
+        </Form>
       </div>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel>Nama Peserta</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Masukan nama lengkap peserta"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescription>
-                  Nama peserta yang akan masuk menjadi daftar pemilih tetap.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="subpart"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel>Peserta Bagian Dari</FormLabel>
-                <FormControl>
-                  <Input placeholder="mis. MHS" {...field} />
-                </FormControl>
-                <FormDescription>Pengelompokan peserta.</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />{" "}
-          <Button type="submit">Submit</Button>
-        </form>
-      </Form>
     </div>
   );
 }
