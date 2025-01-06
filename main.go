@@ -1,8 +1,11 @@
 package main
 
 import (
+	b64 "encoding/base64"
 	"log"
 	"os"
+	"os/user"
+	"path/filepath"
 
 	"github.com/urfave/cli/v2"
 	"recap-cuid/cmd"
@@ -11,7 +14,34 @@ import (
 var isProdBuild string
 
 func main() {
+	dir, err := os.UserHomeDir()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	appDir := filepath.Join(dir, ".sora-recap-cuid")
+
+	if _, err := os.Stat(appDir); os.IsNotExist(err) {
+		err = os.MkdirAll(appDir, os.ModePerm)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	currentUser, err := user.Current()
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	uname := currentUser.Username
+
+	dbName := filepath.Join(b64.StdEncoding.EncodeToString([]byte(uname)))
+	fullDbPath := filepath.Join(appDir, dbName+".db")
+
 	cmd.SetBuildFlag(isProdBuild == "y" || isProdBuild == "yes")
+	cmd.SetFullDBPath(fullDbPath)
 
 	app := &cli.App{
 		Name:  "recap-cuid",

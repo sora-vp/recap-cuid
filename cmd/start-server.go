@@ -24,9 +24,14 @@ import (
 var isDebugMode = false
 var incomingMessage = ""
 var isProduction bool
+var dbFullPath string
 
 func SetBuildFlag(status bool) {
 	isProduction = status
+}
+
+func SetFullDBPath(path string) {
+	dbFullPath = path
 }
 
 // EventEmitter is a simple event emitter.
