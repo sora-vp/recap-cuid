@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { LoaderCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { Loader } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -18,6 +18,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { apiInstance } from "@/lib/utils";
+import { UniversalLoading } from "@/components/universal-loading";
+import { UniversalError } from "@/components/universal-error";
 
 const baseNameSchema = z
   .string()
@@ -46,23 +49,83 @@ export function MainPage() {
 
   if (!cuid) return <WaitingForData setCardUID={setCardUID} />;
 
-  return <InsertNewParticipant cuid={cuid} />;
+  return <ParticipantExistChecker cuid={cuid} />;
 }
 
-function InsertNewParticipant(props: { cuid: string }) {
+type TProps = { cuid: string };
+
+function ParticipantExistChecker(props: TProps) {
+  const [participantExist, setParticipantExist] = useState<null | boolean>(
+    null,
+  );
+  const [participantData, setParticipantData] = useState<null | {
+    Name: string;
+    Subpart: string;
+  }>(null);
+
+  useEffect(() => {
+    async function getParticipant() {
+      try {
+        const participantAlreadyExistOrNah = await apiInstance.get<{
+          success: boolean;
+          exists: boolean;
+          data?: {
+            Name: string;
+            Subpart: string;
+          };
+        }>(`/get-participant/${props.cuid}`);
+        const resData = participantAlreadyExistOrNah.data;
+
+        if (resData.exists) setParticipantData(resData.data!);
+
+        setParticipantExist(resData.exists);
+      } catch (e: unknown) {
+        console.log(e);
+      }
+    }
+
+    getParticipant();
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (participantExist === null)
+    return (
+      <UniversalLoading
+        title="Mengecek data apakah sudah terdaftar atau belum"
+        description="Mohon tunggu sebentar"
+      />
+    );
+
+  if (participantExist)
+    return (
+      <UniversalError
+        title="Kartu ini sudah terdaftar"
+        description={`Mohon maaf, kartu ini sudah ada dalam database komputer ini atas nama "${participantData?.Name}" yang berasal dari bagian "${participantData?.Subpart}".`}
+      />
+    );
+
+  return <InsertNewParticipant {...props} />;
+}
+
+function InsertNewParticipant(props: TProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       cuid: props.cuid,
+      name: "",
+      subpart: "",
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    await apiInstance.post("/insert-participant", values);
+
+    form.reset();
   }
 
   return (
-    <div className="flex justify-center">
+    <div className="flex justify-center items-center h-[73vh] md:items-start md:h-content">
       <div className="flex flex-col justify-center items-center md:px-5 mt-4 space-y-2 w-5/6 gap-0.5">
         <div className="space-y-0.5 w-full">
           <h3 className="scroll-m-20 text-2xl font-semibold tracking-tight">
@@ -75,9 +138,7 @@ function InsertNewParticipant(props: { cuid: string }) {
         </div>
         <p className="w-full select-none">
           ID kartu:{" "}
-          <span className="font-mono font-semibold">
-            {props.cuid.replaceAll("0X", " 0x").trim()}
-          </span>
+          <span className="font-mono font-semibold">{props.cuid}</span>
         </p>
         <Form {...form}>
           <form
@@ -93,6 +154,7 @@ function InsertNewParticipant(props: { cuid: string }) {
                   <FormControl>
                     <Input
                       {...field}
+                      disabled={form.formState.isSubmitting}
                       placeholder="Masukan nama lengkap peserta"
                     />
                   </FormControl>
@@ -110,14 +172,23 @@ function InsertNewParticipant(props: { cuid: string }) {
                 <FormItem className="w-full">
                   <FormLabel>Peserta Bagian Dari</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="mis. MHS" />
+                    <Input
+                      {...field}
+                      disabled={form.formState.isSubmitting}
+                      placeholder="mis. MHS"
+                    />
                   </FormControl>
                   <FormDescription>Pengelompokan peserta.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit">Submit</Button>
+            <Button disabled={form.formState.isSubmitting} type="submit">
+              {form.formState.isSubmitting ? (
+                <LoaderCircle className="animate-spin mr-2" />
+              ) : null}
+              Tambah Peserta
+            </Button>
           </form>
         </Form>
       </div>

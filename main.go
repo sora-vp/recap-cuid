@@ -1,17 +1,20 @@
 package main
 
 import (
-	b64 "encoding/base64"
+	"embed"
 	"log"
 	"os"
-	"os/user"
 	"path/filepath"
 
-	"github.com/urfave/cli/v2"
 	"recap-cuid/cmd"
+
+	"github.com/urfave/cli/v2"
 )
 
 var isProdBuild string
+
+//go:embed database/migrations/*.sql
+var migrations embed.FS
 
 func main() {
 	dir, err := os.UserHomeDir()
@@ -30,18 +33,11 @@ func main() {
 		}
 	}
 
-	currentUser, err := user.Current()
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-
-	uname := currentUser.Username
-
-	dbName := filepath.Join(b64.StdEncoding.EncodeToString([]byte(uname)))
-	fullDbPath := filepath.Join(appDir, dbName+".db")
+	fullDbPath := filepath.Join(appDir, "participant-data.db")
 
 	cmd.SetBuildFlag(isProdBuild == "y" || isProdBuild == "yes")
 	cmd.SetFullDBPath(fullDbPath)
+	cmd.SetDBMigrations(migrations)
 
 	app := &cli.App{
 		Name:  "recap-cuid",
