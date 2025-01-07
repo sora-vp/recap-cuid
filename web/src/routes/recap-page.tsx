@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
+import ExcelJS from "exceljs";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
@@ -310,18 +311,122 @@ export function RecapPage() {
     }
   }, []);
 
-  const exportToExcel = useCallback(() => {
-    setExporting(true);
+  const exportToExcel = useCallback(async () => {
+    try {
+      setExporting(true);
 
-    if (participantsData.length < 1) {
-      toast.error("Minimal terdapat satu data peserta!");
+      if (participantsData.length < 1) {
+        toast.error("Minimal terdapat satu data peserta!");
+        setExporting(false);
+        return;
+      }
+
+      const workbook = new ExcelJS.Workbook();
+
+      workbook.created = new Date();
+
+      // First processed worksheet
+      const worksheet = workbook.addWorksheet("data-masuk", {
+        views: [{ state: "frozen", ySplit: 1 }],
+      });
+      worksheet.addRow([
+        "Nama",
+        "CUID",
+        "Bagian Dari",
+        "Waktu Registrasi",
+        "Di Daftarkan Oleh",
+      ]);
+
+      worksheet.getColumn(1).width = 40;
+      worksheet.getColumn(2).width = 27;
+      worksheet.getColumn(3).width = 13;
+      worksheet.getColumn(4).width = 34;
+      worksheet.getColumn(5).width = 25;
+
+      worksheet.getColumn(4).numFmt = "dddd!, dd mmmm yyyy!, HH:MM:ss";
+
+      const firstRow = worksheet.getRow(1);
+
+      for (let i = 1; i <= 5; i++) {
+        firstRow.getCell(i).alignment = {
+          vertical: "middle",
+          horizontal: i > 1 ? "center" : "left",
+        };
+
+        firstRow.getCell(i).border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+      }
+
+      firstRow.alignment = {
+        vertical: "middle",
+        horizontal: "center",
+      };
+      firstRow.font = {
+        bold: true,
+      };
+
+      participantsData.forEach((participant, idx) => {
+        // TODO: ubah Mono-chrono Entrance jadi nama author yang di ambil dari halaman pengaturan.
+        worksheet.addRow([
+          participant.Name,
+          participant.Cuid,
+          participant.Subpart,
+          new Date(participant.CreatedAt),
+          "MonoChronoEntrance",
+        ]);
+
+        const currentRow = worksheet.getRow(idx + 2);
+
+        currentRow.getCell(2).font = {
+          name: "Courier New",
+          bold: true,
+        };
+
+        for (let i = 2; i <= 5; i++) {
+          currentRow.getCell(i).alignment = {
+            vertical: "middle",
+            horizontal: "center",
+          };
+        }
+
+        for (let i = 1; i <= 5; i++) {
+          currentRow.getCell(i).border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" },
+          };
+        }
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      const blob = new Blob([buffer]);
+      const url = URL.createObjectURL(blob);
+
+      const anchor = document.createElement("a");
+
+      anchor.href = url;
+      anchor.download = `${+Date.now()}-Data Seluruh Pemilih Tetap.xlsx`;
+
+      anchor.click();
+      anchor.remove();
+
+      toast.success("Berhasil dalam membuat data.", {
+        description: "Mohon simpan data tersebut pada tempat yang aman.",
+      });
+
       setExporting(false);
-      return;
+    } catch (e: unknown) {
+      console.error(e);
+      toast.error("Gagal membuat rekap data excel.", {
+        description: "Coba lagi dalam beberapa saat.",
+      });
     }
-
-    console.log(participantsData);
-
-    setExporting(false);
   }, [participantsData]);
 
   useEffect(() => {
