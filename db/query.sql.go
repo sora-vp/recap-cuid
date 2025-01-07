@@ -7,7 +7,17 @@ package db
 
 import (
 	"context"
+	"time"
 )
+
+const deleteSpecificParticipant = `-- name: DeleteSpecificParticipant :exec
+DELETE FROM participants WHERE cuid = ?
+`
+
+func (q *Queries) DeleteSpecificParticipant(ctx context.Context, cuid string) error {
+	_, err := q.db.ExecContext(ctx, deleteSpecificParticipant, cuid)
+	return err
+}
 
 const getSpecificParticipant = `-- name: GetSpecificParticipant :one
 SELECT name, subpart FROM participants
@@ -39,4 +49,43 @@ type InsertNewParticipantParams struct {
 func (q *Queries) InsertNewParticipant(ctx context.Context, arg InsertNewParticipantParams) error {
 	_, err := q.db.ExecContext(ctx, insertNewParticipant, arg.Cuid, arg.Name, arg.Subpart)
 	return err
+}
+
+const listAllParticipants = `-- name: ListAllParticipants :many
+SELECT name, subpart, cuid, created_at FROM participants
+`
+
+type ListAllParticipantsRow struct {
+	Name      string
+	Subpart   string
+	Cuid      string
+	CreatedAt time.Time
+}
+
+func (q *Queries) ListAllParticipants(ctx context.Context) ([]ListAllParticipantsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAllParticipants)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAllParticipantsRow
+	for rows.Next() {
+		var i ListAllParticipantsRow
+		if err := rows.Scan(
+			&i.Name,
+			&i.Subpart,
+			&i.Cuid,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

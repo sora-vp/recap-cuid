@@ -1,9 +1,19 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { motion } from "motion/react";
-import { ArchiveRestore, FileArchive, Settings } from "lucide-react";
+import {
+  ArchiveRestore,
+  FileArchive,
+  LoaderCircle,
+  Settings,
+} from "lucide-react";
 import { createBrowserRouter, RouterProvider, useLocation } from "react-router";
 
 import { MainPage } from "@/routes/main-page";
+const RecapPage = lazy(() =>
+  import("@/routes/recap-page").then((module) => ({
+    default: module.RecapPage,
+  })),
+);
 
 import { Button } from "@/components/ui/button";
 
@@ -26,7 +36,13 @@ const router = createBrowserRouter([
     element: (
       <>
         <NavigationButtons />
-        download rekapan
+        <Suspense
+          fallback={
+            <LoaderCircle className="ml-5 mt-2 w-10 h-10 animate-spin" />
+          }
+        >
+          <RecapPage />
+        </Suspense>
       </>
     ),
   },
@@ -90,7 +106,10 @@ function NavigationButtons() {
     <div className="h-[8vh] w-full flex items-center pl-5 gap-3 pt-2">
       <Button
         variant={location.pathname === "/" ? "outline" : "secondary"}
-        onClick={() => router.navigate("/")}
+        onClick={() => {
+          router.navigate("/");
+          window.location.reload();
+        }}
       >
         <ArchiveRestore />
         Perekaman

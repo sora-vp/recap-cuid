@@ -325,6 +325,67 @@ func StartWebServer(cCtx *cli.Context) error {
 				"success": true,
 			})
 		})
+		app.Get("/api/get-participants", func(c *fiber.Ctx) error {
+			participants, err := queries.ListAllParticipants(ctx)
+
+			if err != nil {
+				if err == sql.ErrNoRows {
+					return c.Status(fiber.StatusOK).JSON([]string{})
+				}
+
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"success": false,
+					"message": "Terjadi masalah pada database saat menambahkan data, coba lagi nanti.",
+				})
+			}
+
+			return c.Status(fiber.StatusOK).JSON(participants)
+		})
+		app.Delete("/api/remove-participant/:cuid", func(c *fiber.Ctx) error {
+			cuid := c.Params("cuid")
+
+			if len(cuid) < 4 || len(cuid) > 28 {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"success": false,
+					"message": "CUID harus memiliki panjang minimal 4 dan maksimal 28 karakter",
+				})
+			}
+
+			participant, err := queries.GetSpecificParticipant(ctx, cuid)
+
+			if err != nil {
+				if err == sql.ErrNoRows {
+					return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+						"success": false,
+						"message": "Peserta tidak dapat ditemukan.",
+					})
+				}
+
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"success": false,
+					"message": "Terjadi masalah pada database saat menghapus data, mohon coba lagi nanti (step: 1).",
+				})
+			}
+
+			if participant.Name == "" || participant.Subpart == "" {
+				return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+					"success": false,
+					"message": "Peserta tidak dapat di verifikasi.",
+				})
+			}
+
+			if err := queries.DeleteSpecificParticipant(ctx, cuid); err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"success": false,
+					"message": "Terjadi masalah pada database saat menghapus data, mohon coba lagi nanti (step: 2).",
+				})
+			}
+
+			return c.Status(fiber.StatusOK).JSON(fiber.Map{
+				"success": true,
+				"message": "Berhasil menghapus peserta dengan CUID: " + cuid,
+			})
+		})
 
 		log.Fatal(app.Listen(fmt.Sprintf("127.0.0.1:%d", serverPort)))
 	}()

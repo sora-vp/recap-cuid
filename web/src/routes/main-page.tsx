@@ -17,6 +17,14 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { apiInstance } from "@/lib/utils";
 import { UniversalLoading } from "@/components/universal-loading";
@@ -109,6 +117,8 @@ function ParticipantExistChecker(props: TProps) {
 }
 
 function InsertNewParticipant(props: TProps) {
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -119,80 +129,116 @@ function InsertNewParticipant(props: TProps) {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    await apiInstance.post("/insert-participant", values);
+    try {
+      await apiInstance.post("/insert-participant", values);
 
-    form.reset();
+      form.reset();
+
+      setSuccessDialogOpen(true);
+
+      setTimeout(() => {
+        location.reload();
+      }, 2500);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e: unknown) {
+      toast.error("Gagal dalam mengunggah data. ", {
+        description: "Mohon periksa kembali apakah server berjalan atau belum.",
+      });
+    }
   }
 
   return (
-    <div className="flex justify-center items-center h-[73vh] md:items-start md:h-content">
-      <div className="flex flex-col justify-center items-center md:px-5 mt-4 space-y-2 w-5/6 gap-0.5">
-        <div className="space-y-0.5 w-full">
-          <h3 className="scroll-m-20 text-2xl font-semibold tracking-tight">
-            Tambah Pemilih Tetap Baru
-          </h3>
-          <p>
-            Mohon tambahkan informasi pemilih dengan lengkap dan teliti. Pemilih
-            berhak untuk melihat datanya di tambahkan.
+    <>
+      <AlertDialog open={successDialogOpen}>
+        <AlertDialogContent className="bg-green-700 border-green-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-green-100">
+              Data pemilih berhasil ditambah!
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-green-100">
+              Data berhasil ditambah, mohon untuk mengecek data di halaman Rekap
+              Data untuk melihat keseluruhan perekaman data yang berhasil
+              tercatat pada sistem.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="items-center">
+            <LoaderCircle className="animate-spin text-green-300" />
+            <AlertDialogDescription className="text-green-300 text-xs pb-0.5">
+              Halaman ini akan dimuat ulang dalam waktu tiga detik...
+            </AlertDialogDescription>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <div className="flex justify-center items-center h-[73vh] md:items-start md:h-content">
+        <div className="flex flex-col justify-center items-center md:px-5 mt-4 space-y-2 w-5/6 gap-0.5">
+          <div className="space-y-0.5 w-full">
+            <h3 className="scroll-m-20 text-2xl font-semibold tracking-tight">
+              Tambah Pemilih Tetap Baru
+            </h3>
+            <p>
+              Mohon tambahkan informasi pemilih dengan lengkap dan teliti.
+              Pemilih berhak untuk melihat datanya di tambahkan.
+            </p>
+          </div>
+          <p className="w-full select-none">
+            ID kartu:{" "}
+            <span className="font-mono font-semibold">{props.cuid}</span>
           </p>
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="space-y-4 w-full"
+            >
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem className="w-full">
+                    <FormLabel>Nama Peserta</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        disabled={form.formState.isSubmitting}
+                        placeholder="Masukan nama lengkap peserta"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Nama peserta yang akan masuk menjadi daftar pemilih tetap.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="subpart"
+                render={({ field }) => (
+                  <FormItem className="w-full">
+                    <FormLabel>Peserta Bagian Dari</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        disabled={form.formState.isSubmitting}
+                        placeholder="mis. MHS"
+                      />
+                    </FormControl>
+                    <FormDescription>Pengelompokan peserta.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button disabled={form.formState.isSubmitting} type="submit">
+                {form.formState.isSubmitting ? (
+                  <LoaderCircle className="animate-spin mr-2" />
+                ) : null}
+                Tambah Peserta
+              </Button>
+            </form>
+          </Form>
         </div>
-        <p className="w-full select-none">
-          ID kartu:{" "}
-          <span className="font-mono font-semibold">{props.cuid}</span>
-        </p>
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-4 w-full"
-          >
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem className="w-full">
-                  <FormLabel>Nama Peserta</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      disabled={form.formState.isSubmitting}
-                      placeholder="Masukan nama lengkap peserta"
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Nama peserta yang akan masuk menjadi daftar pemilih tetap.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="subpart"
-              render={({ field }) => (
-                <FormItem className="w-full">
-                  <FormLabel>Peserta Bagian Dari</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      disabled={form.formState.isSubmitting}
-                      placeholder="mis. MHS"
-                    />
-                  </FormControl>
-                  <FormDescription>Pengelompokan peserta.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button disabled={form.formState.isSubmitting} type="submit">
-              {form.formState.isSubmitting ? (
-                <LoaderCircle className="animate-spin mr-2" />
-              ) : null}
-              Tambah Peserta
-            </Button>
-          </form>
-        </Form>
       </div>
-    </div>
+    </>
   );
 }
 
