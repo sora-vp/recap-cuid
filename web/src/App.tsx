@@ -1,12 +1,8 @@
 import { lazy, Suspense, useEffect } from "react";
 import { motion } from "motion/react";
-import {
-  ArchiveRestore,
-  FileArchive,
-  LoaderCircle,
-  Settings,
-} from "lucide-react";
+import { ArchiveRestore, FileArchive, Settings } from "lucide-react";
 import { createBrowserRouter, RouterProvider, useLocation } from "react-router";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import { MainPage } from "@/routes/main-page";
 const RecapPage = lazy(() =>
@@ -28,6 +24,7 @@ const router = createBrowserRouter([
       <>
         <NavigationButtons />
         <MainPage />
+        <BottomInfo isAbsolute />
       </>
     ),
   },
@@ -37,12 +34,11 @@ const router = createBrowserRouter([
       <>
         <NavigationButtons />
         <Suspense
-          fallback={
-            <LoaderCircle className="ml-5 mt-2 w-10 h-10 animate-spin" />
-          }
+          fallback={<Skeleton className="ml-5 w-[97%] h-[65vh] mt-5" />}
         >
           <RecapPage />
         </Suspense>
+        <BottomInfo />
       </>
     ),
   },
@@ -52,6 +48,7 @@ const router = createBrowserRouter([
       <>
         <NavigationButtons />
         pengaturan lah intinya
+        <BottomInfo isAbsolute />
       </>
     ),
   },
@@ -75,9 +72,22 @@ function App() {
   }, []);
 
   return (
-    <>
+    <div className="min-h-screen">
       <RouterProvider router={router} />
-      <div className="absolute bottom-4 left-4">
+    </div>
+  );
+}
+
+function BottomInfo(props: { isAbsolute?: boolean }) {
+  return (
+    <div
+      className={
+        !props.isAbsolute ? "flex justify-between items-end w-full pt-16" : ""
+      }
+    >
+      <div
+        className={props.isAbsolute ? "absolute bottom-4 left-4" : "pb-4 pl-4"}
+      >
         <motion.span
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -92,10 +102,10 @@ function App() {
           <p className="select-none text-xs">recap-cuid</p>
         </motion.span>
       </div>
-      <div className="absolute bottom-1 right-1">
+      <div className={props.isAbsolute ? "absolute bottom-1 right-1" : ""}>
         <small className="font-sundanese font-mono">vALPHA-0.0.1</small>
       </div>
-    </>
+    </div>
   );
 }
 
