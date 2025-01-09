@@ -1,0 +1,36 @@
+name: Build web dan go untuk windows dan linux 32/64 bit serta release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.3"
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 9
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Packing dan release
+        run: make release
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./dist
