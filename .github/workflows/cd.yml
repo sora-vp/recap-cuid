@@ -1,7 +1,9 @@
 name: Build web dan go untuk windows dan linux 32/64 bit serta release
 
 on:
-  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
 
 jobs:
   build:
@@ -27,10 +29,11 @@ jobs:
         with:
           node-version: 20
 
-      - name: Packing dan release
+      - name: Build web dan binary dari golang
         run: make release
 
       - name: Release
         uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: ./dist
+          files: ./dist/
