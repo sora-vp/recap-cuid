@@ -59,6 +59,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAtomValue } from "jotai";
+import { settingsAtom } from "@/lib/atom";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -370,6 +372,8 @@ export function RecapPage() {
   const [isLoading, setLoading] = useState(true);
   const [isExporting, setExporting] = useState(false);
 
+  const settingsValue = useAtomValue(settingsAtom);
+
   const getData = useCallback(async () => {
     try {
       setLoading(true);
@@ -408,6 +412,12 @@ export function RecapPage() {
         return;
       }
 
+      if (settingsValue.author === "") {
+        toast.error("Mohon isi nama pencatat pada halaman pengaturan!");
+        setExporting(false);
+        return;
+      }
+
       const workbook = new ExcelJS.Workbook();
 
       workbook.created = new Date();
@@ -425,7 +435,7 @@ export function RecapPage() {
       ]);
 
       worksheet.getColumn(1).width = 40;
-      worksheet.getColumn(2).width = 27;
+      worksheet.getColumn(2).width = 41;
       worksheet.getColumn(3).width = 13;
       worksheet.getColumn(4).width = 34;
       worksheet.getColumn(5).width = 25;
@@ -457,13 +467,12 @@ export function RecapPage() {
       };
 
       participantsData.forEach((participant, idx) => {
-        // TODO: ubah Mono-chrono Entrance jadi nama author yang di ambil dari halaman pengaturan.
         worksheet.addRow([
           participant.Name,
           participant.Cuid,
           participant.Subpart,
           new Date(participant.CreatedAt),
-          "MonoChronoEntrance",
+          settingsValue.author,
         ]);
 
         const currentRow = worksheet.getRow(idx + 2);
@@ -514,7 +523,7 @@ export function RecapPage() {
         description: "Coba lagi dalam beberapa saat.",
       });
     }
-  }, [participantsData]);
+  }, [participantsData, settingsValue]);
 
   useEffect(() => {
     window.reloadData = getData;

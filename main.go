@@ -34,10 +34,12 @@ func main() {
 	}
 
 	fullDbPath := filepath.Join(appDir, "participant-data.db")
+	fullSettingsPath := filepath.Join(appDir, "settings.json")
 
 	cmd.SetBuildFlag(isProdBuild == "y" || isProdBuild == "yes")
 	cmd.SetFullDBPath(fullDbPath)
 	cmd.SetDBMigrations(migrations)
+	cmd.SetSettingsFile(fullSettingsPath)
 
 	app := &cli.App{
 		Name:  "recap-cuid",

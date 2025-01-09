@@ -28,15 +28,19 @@ import (
 	_ "modernc.org/sqlite"
 
 	dataScheme "recap-cuid/db"
+	"recap-cuid/utility"
 	ui "recap-cuid/web"
 )
 
-var isDebugMode = false
-var incomingMessage = ""
-var isProduction bool
-var dbFullPath string
+var (
+	isDebugMode     = false
+	incomingMessage = ""
+	isProduction    bool
+	dbFullPath      string
 
-var dbMigrations embed.FS
+	dbMigrations embed.FS
+	settingsPath string
+)
 
 func SetBuildFlag(status bool) {
 	isProduction = status
@@ -48,6 +52,10 @@ func SetFullDBPath(path string) {
 
 func SetDBMigrations(migrationsFS embed.FS) {
 	dbMigrations = migrationsFS
+}
+
+func SetSettingsFile(path string) {
+	settingsPath = path
 }
 
 // EventEmitter is a simple event emitter.
@@ -159,6 +167,11 @@ func StartWebServer(cCtx *cli.Context) error {
 	}
 
 	queries := dataScheme.New(db)
+
+	_, err = utility.LoadSettings(settingsPath)
+	if err != nil {
+		log.Fatalf("Failed to load settings: %v", err)
+	}
 
 	arduinoMode := &serial.Mode{
 		BaudRate: arduinoBaudRate,
@@ -384,6 +397,51 @@ func StartWebServer(cCtx *cli.Context) error {
 			return c.Status(fiber.StatusOK).JSON(fiber.Map{
 				"success": true,
 				"message": "Berhasil menghapus peserta dengan CUID: " + cuid,
+			})
+		})
+
+		app.Get("/api/get-settings", func(c *fiber.Ctx) error {
+			settings := utility.GetSettings()
+
+			return c.Status(fiber.StatusOK).JSON(fiber.Map{
+				"author":  settings.Author,
+				"subpart": settings.Subpart,
+			})
+		})
+
+		app.Put("/api/update-settings", func(c *fiber.Ctx) error {
+			c.Accepts("application/json")
+
+			payload := struct {
+				Author  string `json:"author"`
+				Subpart string `json:"subpart"`
+			}{}
+
+			if err := c.BodyParser(&payload); err != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"success": false,
+					"message": "Mohon perhatikan kembali susunan data yang anda kirim.",
+				})
+			}
+
+			if payload.Author == "" || payload.Subpart == "" {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"success": false,
+					"message": "Mohon perhatikan kembali data yang anda kirim.",
+				})
+			}
+
+			if err = utility.UpdateSettings(payload.Author, payload.Subpart); err != nil {
+				log.Printf("Failed to update settings: %v", err)
+
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"success": false,
+					"message": "Gagal dalam mengubah data, mohon coba lagi nanti.",
+				})
+			}
+
+			return c.Status(fiber.StatusOK).JSON(fiber.Map{
+				"success": true,
 			})
 		})
 

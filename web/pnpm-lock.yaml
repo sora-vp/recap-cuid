@@ -40,6 +40,9 @@ importers:
       exceljs:
         specifier: ^4.4.0
         version: 4.4.0
+      jotai:
+        specifier: ^2.11.0
+        version: 2.11.0(@types/react@18.3.18)(react@18.3.1)
       lucide-react:
         specifier: ^0.469.0
         version: 0.469.0(react@18.3.1)
@@ -2279,6 +2282,21 @@ packages:
         integrity: sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==,
       }
     hasBin: true
+
+  jotai@2.11.0:
+    resolution:
+      {
+        integrity: sha512-zKfoBBD1uDw3rljwHkt0fWuja1B76R7CjznuBO+mSX6jpsO1EBeWNRKpeaQho9yPI/pvCv4recGfgOXGxwPZvQ==,
+      }
+    engines: { node: ">=12.20.0" }
+    peerDependencies:
+      "@types/react": ">=17.0.0"
+      react: ">=17.0.0"
+    peerDependenciesMeta:
+      "@types/react":
+        optional: true
+      react:
+        optional: true
 
   js-tokens@4.0.0:
     resolution:
@@ -4703,6 +4721,11 @@ snapshots:
       "@pkgjs/parseargs": 0.11.0
 
   jiti@1.21.7: {}
+
+  jotai@2.11.0(@types/react@18.3.18)(react@18.3.1):
+    optionalDependencies:
+      "@types/react": 18.3.18
+      react: 18.3.1
 
   js-tokens@4.0.0: {}
 

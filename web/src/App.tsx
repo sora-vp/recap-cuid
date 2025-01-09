@@ -10,6 +10,11 @@ const RecapPage = lazy(() =>
     default: module.RecapPage,
   })),
 );
+const SettingsPage = lazy(() =>
+  import("@/routes/settings-page").then((module) => ({
+    default: module.SettingsPage,
+  })),
+);
 
 import { Button } from "@/components/ui/button";
 
@@ -47,7 +52,11 @@ const router = createBrowserRouter([
     element: (
       <>
         <NavigationButtons />
-        pengaturan lah intinya
+        <Suspense
+          fallback={<Skeleton className="ml-5 w-[97%] h-[65vh] mt-5" />}
+        >
+          <SettingsPage />
+        </Suspense>
         <BottomInfo isAbsolute />
       </>
     ),
@@ -78,7 +87,7 @@ function App() {
   );
 }
 
-function BottomInfo(props: { isAbsolute?: boolean }) {
+export function BottomInfo(props: { isAbsolute?: boolean }) {
   return (
     <div
       className={

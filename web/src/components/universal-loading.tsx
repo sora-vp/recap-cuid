@@ -1,16 +1,21 @@
 import { motion } from "motion/react";
 import { Loader } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function UniversalLoading(props: {
   title: string;
   description: string;
+  className?: string;
 }) {
   return (
     <motion.div
       initial={{ opacity: 0, x: "-250px" }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: "-250px" }}
-      className="flex h-[85vh] flex-col items-center justify-center"
+      className={cn(
+        "flex h-[85vh] flex-col items-center justify-center",
+        props.className,
+      )}
     >
       <Loader size={78} strokeWidth={1.5} className="animate-spin" />
 

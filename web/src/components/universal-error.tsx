@@ -2,14 +2,21 @@ import { motion } from "motion/react";
 import { RotateCcw } from "lucide-react";
 
 import { Button } from "./ui/button";
+import { cn } from "@/lib/utils";
 
 export function UniversalError(props: {
   title: string;
   description: string;
   errorMessage?: string;
+  className?: string;
 }) {
   return (
-    <div className="flex h-[85vh] flex-col items-center justify-center gap-5 p-6">
+    <div
+      className={cn(
+        "flex h-[85vh] flex-col items-center justify-center gap-5 p-6",
+        props.className,
+      )}
+    >
       <div className="w-[80%] text-center">
         <motion.h1
           initial={{ opacity: 0, y: -25 }}

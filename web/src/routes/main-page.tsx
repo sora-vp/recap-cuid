@@ -29,6 +29,8 @@ import { Input } from "@/components/ui/input";
 import { apiInstance } from "@/lib/utils";
 import { UniversalLoading } from "@/components/universal-loading";
 import { UniversalError } from "@/components/universal-error";
+import { useAtomValue } from "jotai";
+import { settingsAtom } from "@/lib/atom";
 
 const baseNameSchema = z
   .string()
@@ -119,12 +121,14 @@ function ParticipantExistChecker(props: TProps) {
 function InsertNewParticipant(props: TProps) {
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
 
+  const settingsValue = useAtomValue(settingsAtom);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       cuid: props.cuid,
       name: "",
-      subpart: "",
+      subpart: settingsValue.subpart,
     },
   });
 
@@ -201,6 +205,8 @@ function InsertNewParticipant(props: TProps) {
                         {...field}
                         disabled={form.formState.isSubmitting}
                         placeholder="Masukan nama lengkap peserta"
+                        autoComplete="off"
+                        autoCorrect="off"
                       />
                     </FormControl>
                     <FormDescription>
@@ -221,6 +227,8 @@ function InsertNewParticipant(props: TProps) {
                         {...field}
                         disabled={form.formState.isSubmitting}
                         placeholder="mis. MHS"
+                        autoComplete="off"
+                        autoCorrect="off"
                       />
                     </FormControl>
                     <FormDescription>Pengelompokan peserta.</FormDescription>
